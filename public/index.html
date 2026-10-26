@@ -1,0 +1,374 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Release Checklist</title>
+<style>
+  :root {
+    --bg: #f5f6f8; --panel: #ffffff; --text: #1d2330; --muted: #6b7280; --border: #e3e6eb;
+    --accent: #2563eb; --accent-text: #ffffff; --done: #16a34a; --danger: #dc2626; --hover: #f0f3f8;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #12151b; --panel: #1b1f27; --text: #e6e8ec; --muted: #9aa3b2; --border: #2b313c;
+      --accent: #3b82f6; --done: #22c55e; --danger: #f87171; --hover: #232833;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  button, input { font: inherit; color: inherit; }
+  button { cursor: pointer; border: 1px solid var(--border); background: var(--panel); border-radius: 8px; padding: 7px 12px; }
+  button:hover:not(:disabled) { background: var(--hover); }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+  button.primary:hover:not(:disabled) { filter: brightness(1.08); background: var(--accent); }
+  input[type=text] { border: 1px solid var(--border); background: var(--panel); border-radius: 8px; padding: 7px 10px; min-width: 0; }
+  input[type=text]:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+
+  header { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 14px 20px; background: var(--panel); border-bottom: 1px solid var(--border); }
+  header h1 { font-size: 18px; margin: 0; flex: 1; }
+  header label { color: var(--muted); font-size: 13px; display: flex; align-items: center; gap: 6px; }
+  header #userName { width: 140px; }
+
+  .layout { display: grid; grid-template-columns: 280px 1fr; gap: 20px; max-width: 1100px; margin: 20px auto; padding: 0 16px; }
+  @media (max-width: 760px) { .layout { grid-template-columns: 1fr; } }
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; }
+
+  aside h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin: 0; padding: 14px 16px 8px; }
+  #releaseList { list-style: none; margin: 0; padding: 0 8px 8px; max-height: 70vh; overflow: auto; }
+  #releaseList li { padding: 10px; border-radius: 8px; cursor: pointer; }
+  #releaseList li:hover { background: var(--hover); }
+  #releaseList li.active { background: var(--hover); box-shadow: inset 3px 0 0 var(--accent); }
+  #releaseList .r-name { font-weight: 600; overflow-wrap: anywhere; }
+  #releaseList .r-meta { font-size: 12px; color: var(--muted); display: flex; justify-content: space-between; }
+
+  main { padding: 20px; min-width: 0; }
+  .release-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+  .release-head h2 { margin: 0; font-size: 22px; overflow-wrap: anywhere; }
+  .date-badge { font-size: 13px; padding: 2px 10px; border-radius: 999px; background: var(--hover); border: 1px solid var(--border); color: var(--muted); white-space: nowrap; }
+  .sub { color: var(--muted); font-size: 13px; margin-top: 4px; }
+  .progress { height: 8px; background: var(--hover); border-radius: 999px; overflow: hidden; margin: 14px 0 6px; }
+  .progress > div { height: 100%; background: var(--done); width: 0; transition: width .3s; }
+
+  #items { list-style: none; margin: 14px 0; padding: 0; }
+  #items li { display: flex; align-items: center; gap: 10px; padding: 8px 6px; border-bottom: 1px solid var(--border); }
+  #items li:hover { background: var(--hover); }
+  #items input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--done); flex: none; cursor: pointer; }
+  #items .text { flex: 1; overflow-wrap: anywhere; cursor: text; }
+  #items li.done .text { text-decoration: line-through; color: var(--muted); }
+  #items .by { font-size: 12px; color: var(--done); white-space: nowrap; }
+  #items .edit-input { flex: 1; }
+  #items .actions { display: flex; gap: 2px; opacity: 0; }
+  #items li:hover .actions, #items li:focus-within .actions { opacity: 1; }
+  @media (hover: none) { #items .actions { opacity: 1; } }
+  #items .actions button { border: none; background: none; padding: 4px 7px; color: var(--muted); }
+  #items .actions button.del:hover { color: var(--danger); }
+
+  .add-row { display: flex; gap: 8px; }
+  .add-row input { flex: 1; }
+  .empty { color: var(--muted); padding: 30px 0; text-align: center; }
+
+  dialog { border: 1px solid var(--border); border-radius: 12px; background: var(--panel); color: var(--text); padding: 20px; width: min(420px, calc(100vw - 32px)); }
+  dialog::backdrop { background: rgba(0,0,0,.4); }
+  dialog h3 { margin: 0 0 6px; }
+  dialog p { color: var(--muted); font-size: 13px; margin: 0 0 12px; }
+  dialog input { width: 100%; }
+  dialog .row { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+  .error { color: var(--danger); font-size: 13px; min-height: 1em; margin-top: 6px; }
+
+  #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--text); color: var(--bg); padding: 8px 16px; border-radius: 8px; font-size: 14px; opacity: 0; transition: opacity .2s; pointer-events: none; }
+  #toast.show { opacity: 1; }
+  .sync { font-size: 12px; color: var(--muted); }
+</style>
+</head>
+<body>
+<header>
+  <h1>✅ Release Checklist</h1>
+  <span class="sync" id="sync"></span>
+  <label>Your name <input type="text" id="userName" placeholder="e.g. Loi"></label>
+  <button class="primary" id="newReleaseBtn">+ Create release</button>
+</header>
+
+<div class="layout">
+  <aside class="panel">
+    <h2>Releases</h2>
+    <ul id="releaseList"></ul>
+  </aside>
+
+  <main class="panel" id="main">
+    <div class="empty">No releases yet. Click <b>+ Create release</b> to start.</div>
+  </main>
+</div>
+
+<dialog id="newDialog">
+  <form method="dialog" id="newForm">
+    <h3>Create release</h3>
+    <p id="newHint"></p>
+    <input type="text" id="newName" placeholder="Release name, e.g. v2.4.0" maxlength="120" required>
+    <div class="error" id="newError"></div>
+    <div class="row">
+      <button type="button" id="cancelNew">Cancel</button>
+      <button type="submit" class="primary">Create</button>
+    </div>
+  </form>
+</dialog>
+
+<div id="toast"></div>
+
+<script>
+const $ = (sel) => document.querySelector(sel);
+const state = { today: null, releases: [], current: null, editingId: null };
+
+// ---------- helpers ----------
+async function api(method, url, body) {
+  const res = await fetch(url, {
+    method,
+    headers: body ? { 'Content-Type': 'application/json' } : undefined,
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
+  return data;
+}
+
+function toast(msg) {
+  const el = $('#toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toast.t);
+  toast.t = setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+function fmtDate(iso) {
+  const [y, m, d] = iso.split('-').map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
+}
+
+function fmtTime(iso) {
+  return new Date(iso).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
+function el(tag, props = {}, ...children) {
+  const node = document.createElement(tag);
+  Object.assign(node, props);
+  for (const c of children) if (c != null) node.append(c);
+  return node;
+}
+
+function userName() {
+  return $('#userName').value.trim();
+}
+
+// ---------- user name ----------
+try { $('#userName').value = localStorage.getItem('rc-user') || ''; } catch {}
+$('#userName').addEventListener('input', () => {
+  try { localStorage.setItem('rc-user', userName()); } catch {}
+});
+
+// ---------- rendering ----------
+function renderReleaseList() {
+  const list = $('#releaseList');
+  list.replaceChildren(...state.releases.map((r) => {
+    const li = el('li', { className: state.current?.id === r.id ? 'active' : '' },
+      el('div', { className: 'r-name', textContent: r.name }),
+      el('div', { className: 'r-meta' },
+        el('span', { textContent: fmtDate(r.date) }),
+        el('span', { textContent: `${r.done}/${r.total}` })));
+    li.onclick = () => selectRelease(r.id);
+    return li;
+  }));
+  if (!state.releases.length) list.append(el('li', { className: 'r-meta', textContent: 'No releases yet' }));
+
+  const hasToday = state.releases.some((r) => r.date === state.today);
+  const btn = $('#newReleaseBtn');
+  btn.disabled = hasToday;
+  btn.title = hasToday ? 'A release has already been created today' : '';
+}
+
+function renderRelease() {
+  const main = $('#main');
+  const r = state.current;
+  if (!r) {
+    main.replaceChildren(el('div', { className: 'empty', innerHTML: 'No releases yet. Click <b>+ Create release</b> to start.' }));
+    return;
+  }
+  const done = r.items.filter((i) => i.done).length;
+  const pct = r.items.length ? Math.round((done / r.items.length) * 100) : 0;
+
+  const title = el('h2', { textContent: r.name, title: 'Double-click to rename' });
+  title.ondblclick = () => renameRelease();
+
+  const bar = el('div');
+  bar.style.width = pct + '%';
+
+  const items = el('ul', { id: 'items' }, ...r.items.map((item, idx) => renderItem(item, idx, r.items.length)));
+
+  const addInput = el('input', { type: 'text', placeholder: 'Add a task…', maxLength: 500, id: 'addInput' });
+  const addBtn = el('button', { className: 'primary', textContent: 'Add' });
+  const add = async () => {
+    const text = addInput.value.trim();
+    if (!text) return;
+    addInput.value = '';
+    await mutate(() => api('POST', `/api/releases/${r.id}/items`, { text }));
+    $('#addInput')?.focus();
+  };
+  addBtn.onclick = add;
+  addInput.onkeydown = (e) => { if (e.key === 'Enter') add(); };
+
+  main.replaceChildren(
+    el('div', { className: 'release-head' }, title, el('span', { className: 'date-badge', textContent: '📅 ' + fmtDate(r.date) })),
+    el('div', { className: 'sub', textContent:
+      `${done} of ${r.items.length} done (${pct}%)` + (r.copiedFrom ? ` · copied from ${r.copiedFrom}` : '') }),
+    el('div', { className: 'progress' }, bar),
+    r.items.length ? items : el('div', { className: 'empty', textContent: 'No tasks yet — add the first one below.' }),
+    el('div', { className: 'add-row' }, addInput, addBtn),
+  );
+}
+
+function renderItem(item, idx, count) {
+  const r = state.current;
+  const li = el('li', { className: item.done ? 'done' : '' });
+
+  const cb = el('input', { type: 'checkbox', checked: item.done, title: 'Mark done' });
+  cb.onchange = () => mutate(() => api('PATCH', `/api/releases/${r.id}/items/${item.id}`, { done: cb.checked, by: userName() }));
+
+  let textNode;
+  if (state.editingId === item.id) {
+    textNode = el('input', { type: 'text', className: 'edit-input', value: item.text, maxLength: 500 });
+    const save = async () => {
+      if (state.editingId !== item.id) return;
+      state.editingId = null;
+      const text = textNode.value.trim();
+      if (text && text !== item.text) await mutate(() => api('PATCH', `/api/releases/${r.id}/items/${item.id}`, { text }));
+      else renderRelease();
+    };
+    textNode.onkeydown = (e) => {
+      if (e.key === 'Enter') save();
+      if (e.key === 'Escape') { state.editingId = null; renderRelease(); }
+    };
+    textNode.onblur = save;
+    setTimeout(() => { textNode.focus(); textNode.select(); });
+  } else {
+    textNode = el('span', { className: 'text', textContent: item.text, title: 'Click to edit' });
+    textNode.onclick = () => { state.editingId = item.id; renderRelease(); };
+  }
+
+  const by = item.done && (item.doneBy || item.doneAt)
+    ? el('span', { className: 'by', textContent: `✓ ${item.doneBy || 'someone'}${item.doneAt ? ' · ' + fmtTime(item.doneAt) : ''}` })
+    : null;
+
+  const up = el('button', { textContent: '↑', title: 'Move up', disabled: idx === 0 });
+  up.onclick = () => mutate(() => api('PATCH', `/api/releases/${r.id}/items/${item.id}`, { move: 'up' }));
+  const down = el('button', { textContent: '↓', title: 'Move down', disabled: idx === count - 1 });
+  down.onclick = () => mutate(() => api('PATCH', `/api/releases/${r.id}/items/${item.id}`, { move: 'down' }));
+  const del = el('button', { textContent: '✕', title: 'Delete task', className: 'del' });
+  del.onclick = () => mutate(() => api('DELETE', `/api/releases/${r.id}/items/${item.id}`));
+
+  li.append(cb, textNode, by, el('div', { className: 'actions' }, up, down, del));
+  return li;
+}
+
+// ---------- data ----------
+async function mutate(fn) {
+  try {
+    state.current = await fn();
+    renderRelease();
+    await refreshList();
+  } catch (err) {
+    toast(err.message);
+    await refresh();
+  }
+}
+
+async function refreshList() {
+  const data = await api('GET', '/api/releases');
+  state.today = data.today;
+  state.releases = data.releases;
+  renderReleaseList();
+}
+
+async function selectRelease(id) {
+  state.editingId = null;
+  state.current = await api('GET', `/api/releases/${id}`);
+  try { localStorage.setItem('rc-release', id); } catch {}
+  renderRelease();
+  renderReleaseList();
+}
+
+// Poll so everyone sees the same list. Skip re-rendering while someone is typing.
+async function refresh() {
+  try {
+    await refreshList();
+    if (!state.current) {
+      let saved = null;
+      try { saved = localStorage.getItem('rc-release'); } catch {}
+      const pick = state.releases.find((r) => r.id === saved) || state.releases[0];
+      if (pick) await selectRelease(pick.id);
+      else renderRelease();
+    } else {
+      const summary = state.releases.find((r) => r.id === state.current.id);
+      if (!summary) { state.current = null; return refresh(); }
+      if (summary.version !== state.current.version) {
+        const latest = await api('GET', `/api/releases/${state.current.id}`);
+        const typing = state.editingId || document.activeElement?.id === 'addInput';
+        if (typing) {
+          const draft = $('#addInput')?.value;
+          state.current = latest;
+          if (!state.editingId) {
+            renderRelease();
+            const input = $('#addInput');
+            input.value = draft || '';
+            input.focus();
+          }
+        } else {
+          state.current = latest;
+          renderRelease();
+        }
+      }
+    }
+    $('#sync').textContent = 'Synced ' + new Date().toLocaleTimeString();
+  } catch {
+    $('#sync').textContent = '⚠ Offline — retrying…';
+  }
+}
+
+async function renameRelease() {
+  const r = state.current;
+  const name = window.prompt('Rename release', r.name);
+  if (name && name.trim() && name.trim() !== r.name) {
+    await mutate(() => api('PATCH', `/api/releases/${r.id}`, { name: name.trim() }));
+  }
+}
+
+// ---------- create release ----------
+const dialog = $('#newDialog');
+$('#newReleaseBtn').onclick = () => {
+  const prev = state.releases[0];
+  $('#newHint').textContent = `Release date will be set to ${fmtDate(state.today)}. ` +
+    (prev ? `Tasks will be copied from "${prev.name}" with all checkboxes reset.` : 'This is the first release — start with an empty list.');
+  $('#newName').value = '';
+  $('#newError').textContent = '';
+  dialog.showModal();
+};
+$('#cancelNew').onclick = () => dialog.close();
+$('#newForm').onsubmit = async (e) => {
+  e.preventDefault();
+  const name = $('#newName').value.trim();
+  if (!name) return;
+  try {
+    const created = await api('POST', '/api/releases', { name });
+    dialog.close();
+    await refreshList();
+    await selectRelease(created.id);
+    toast(`Release "${created.name}" created`);
+  } catch (err) {
+    $('#newError').textContent = err.message;
+  }
+};
+
+refresh();
+setInterval(refresh, 3000);
+</script>
+</body>
+</html>
