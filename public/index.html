@@ -328,8 +328,8 @@ async function refresh() {
       }
     }
     $('#sync').textContent = 'Synced ' + new Date().toLocaleTimeString();
-  } catch {
-    $('#sync').textContent = '⚠ Offline — retrying…';
+  } catch (err) {
+    $('#sync').textContent = err instanceof TypeError ? '⚠ Offline — retrying…' : `⚠ ${err.message}`;
   }
 }
 
